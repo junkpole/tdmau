@@ -5,7 +5,7 @@ from dash.dependencies import Input, Output
 
 # --- 1. Load the Master Task Data ---
 # This file MUST be in the same directory as the script.
-TASK_FILE = "Вилоят_Ҳокими_Топшириқлари_10_11_2025_й+++.xlsx - Жами топшириқлар-1.csv"
+TASK_FILE = "tasks.csv"
 DATA_FILE_ERROR = None
 
 try:
