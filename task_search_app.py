@@ -1,10 +1,50 @@
 import pandas as pd
 import dash
 from dash import dcc, html, dash_table
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 
-# --- 1. Load the Master Task Data ---
-# We are now reading an Excel file (.xlsx)
+# --- 1. Translations ---
+# All UI text is now stored here
+translations = {
+    'uz': {
+        'app_title': "Topshiriqlarni Qidirish Tizimi",
+        'main_title': "Topshiriqlarni Boshqarish Tizimi",
+        'placeholder': "Topshiriq mazmuni, ijrochi, holati bo'yicha qidirish...",
+        'search_prompt': "Qidirish uchun so'z kiriting...",
+        'no_results': "bo'yicha hech narsa topilmadi.",
+        'search_error': "Qidirish vaqtida xatolik yuz berdi:",
+        'footer_text': "Copyright © Termiz davlat muhandislik va agrotexnologiyalar universiteti / ",
+        'footer_link': "IT bo'limi",
+        'data_error_file': "Xatolik: Ma'lumotlar fayli topilmadi. Dastur yuklana olmaydi.",
+        'data_error_load': "Ma'lumotlarni yuklashda xatolik yuz berdi:"
+    },
+    'en': {
+        'app_title': "Task Search System",
+        'main_title': "Task Management System",
+        'placeholder': "Search by task content, assignee, status...",
+        'search_prompt': "Please enter a search term...",
+        'no_results': "No results found for",
+        'search_error': "An error occurred during search:",
+        'footer_text': "Copyright © Termiz State University of Engineering and Agrotechnologies / ",
+        'footer_link': "IT Department",
+        'data_error_file': "Error: The data file was not found. The app cannot load.",
+        'data_error_load': "An error occurred loading data:"
+    },
+    'ru': {
+        'app_title': "Система Управления Задачами",
+        'main_title': "Система Управления Задачами",
+        'placeholder': "Поиск по содержанию, исполнителю, статусу...",
+        'search_prompt': "Введите слово для поиска...",
+        'no_results': "Ничего не найдено по запросу",
+        'search_error': "Произошла ошибка во время поиска:",
+        'footer_text': "Copyright © Термезский государственный университет инженерии и агротехнологий / ",
+        'footer_link': "IT-отдел",
+        'data_error_file': "Ошибка: Файл данных не найден. Приложение не может загрузиться.",
+        'data_error_load': "Произошла ошибка при загрузке данных:"
+    }
+}
+
+# --- 2. Load the Master Task Data ---
 TASK_FILE = "tasks.xlsx"
 DATA_FILE_ERROR = None
 
@@ -46,67 +86,130 @@ try:
 
 except FileNotFoundError:
     print(f"FATAL ERROR: Could not find the data file '{TASK_FILE}'.")
-    DATA_FILE_ERROR = f"Error: The data file ({TASK_FILE}) was not found. The app cannot load."
+    DATA_FILE_ERROR = f"{translations['uz']['data_error_file']} ({TASK_FILE})"
     df_all_tasks = pd.DataFrame()
-
 except Exception as e:
     print(f"An error occurred loading the data: {e}")
-    DATA_FILE_ERROR = f"An error occurred loading data: {e}"
+    DATA_FILE_ERROR = f"{translations['uz']['data_error_load']} {e}"
     df_all_tasks = pd.DataFrame()
 
 
-# --- 2. Initialize the Dash App ---
+# --- 3. Initialize the Dash App ---
 app = dash.Dash(__name__)
-server = app.server # This line is needed for services like Render
-app.title = "Task Search System"
+server = app.server
+app.title = translations['uz']['app_title'] # Default title
 
-# --- 3. Define the App Layout ---
+# --- 4. Define the App Layout ---
 app.layout = html.Div(
-    style={'fontFamily': 'Arial, sans-serif', 'padding': '20px'},
+    style={'fontFamily': 'Arial, sans-serif', 'padding': '20px', 'minHeight': '100vh', 'display': 'flex', 'flexDirection': 'column'},
     children=[
-        html.H1("Task Management Search System", style={'textAlign': 'center', 'color': '#333'}),
+        # Store for language preference
+        dcc.Store(id='language-store', data='uz'), # Default language is Uzbek
 
+        # Language Switcher
         html.Div(
             [
-                dcc.Input(
-                    id='search-input',
-                    placeholder="Search by task content, assignee, status, location...",
-                    type='text',
-                    # Disable input if data failed to load
-                    disabled=DATA_FILE_ERROR is not None,
-                    style={'width': '100%', 'padding': '12px', 'fontSize': '16px', 'borderRadius': '5px', 'border': '1px solid #ccc'}
+                dcc.RadioItems(
+                    id='lang-switcher',
+                    options=[
+                        {'label': 'Oʻzbekcha', 'value': 'uz'},
+                        {'label': 'English', 'value': 'en'},
+                        {'label': 'Русский', 'value': 'ru'},
+                    ],
+                    value='uz', # Default value
+                    labelStyle={'display': 'inline-block', 'marginRight': '15px', 'cursor': 'pointer'},
+                    style={'padding': '10px'}
                 )
             ],
-            style={'maxWidth': '800px', 'margin': '20px auto'}
+            style={'textAlign': 'center', 'backgroundColor': '#f4f4f4', 'borderRadius': '5px', 'maxWidth': '300px', 'margin': '0 auto 20px auto'}
         ),
 
-        html.Hr(),
-
-        dcc.Loading(
-            id="loading-spinner",
-            type="circle",
+        # Main App Content
+        html.Div(
+            style={'flex': '1'},
             children=[
-                html.Div(id='results-output', style={'marginTop': '20px'})
+                html.H1(id='main-title', style={'textAlign': 'center', 'color': '#333'}),
+                html.Div(
+                    [
+                        dcc.Input(
+                            id='search-input',
+                            type='text',
+                            disabled=DATA_FILE_ERROR is not None,
+                            style={'width': '100%', 'padding': '12px', 'fontSize': '16px', 'borderRadius': '5px', 'border': '1px solid #ccc'}
+                        )
+                    ],
+                    style={'maxWidth': '800px', 'margin': '20px auto'}
+                ),
+                html.Hr(),
+                dcc.Loading(
+                    id="loading-spinner",
+                    type="circle",
+                    children=[
+                        html.Div(id='results-output', style={'marginTop': '20px'})
+                    ]
+                )
             ]
-        )
+        ),
+        
+        # Footer
+        html.Footer(id='footer', style={'textAlign': 'center', 'marginTop': '40px', 'padding': '20px', 'color': '#777', 'borderTop': '1px solid #eee'})
     ]
 )
 
-# --- 4. Create the Callback for Interactivity ---
+
+# --- 5. Callbacks ---
+
+# Callback to update language in store
+@app.callback(
+    Output('language-store', 'data'),
+    Input('lang-switcher', 'value')
+)
+def update_language(lang):
+    return lang
+
+# Callback to update all UI text based on language
+@app.callback(
+    [Output('main-title', 'children'),
+     Output('search-input', 'placeholder'),
+     Output('footer', 'children'),
+     Output('app-title', 'title')], # Update browser tab title
+    Input('language-store', 'data')
+)
+def update_ui_text(lang):
+    t = translations[lang]
+    footer_children = [
+        html.Span(t['footer_text']),
+        html.A(
+            t['footer_link'],
+            href="https://www.instagram.com/iamumarsatti/?hl=en",
+            target="_blank",
+            style={'color': '#007bff', 'textDecoration': 'none', 'fontWeight': 'bold'}
+        )
+    ]
+    # Note: Dash does not officially support changing app.title dynamically after load.
+    # This (Output('app-title', 'title')) is a small hack and may not always work,
+    # but the 'main-title' and other elements will update perfectly.
+    # We will update the 'app.title' as well, which sets the <title> tag.
+    app.title = t['app_title'] 
+    return t['main_title'], t['placeholder'], footer_children, t['app_title']
+
+# Callback for search logic
 @app.callback(
     Output('results-output', 'children'),
-    [Input('search-input', 'value')]
+    Input('search-input', 'value'),
+    State('language-store', 'data') # Use State so it doesn't re-trigger
 )
-def update_results(search_value):
-    # If the data file failed to load, show the error
+def update_results(search_value, lang):
+    t = translations[lang]
+
     if DATA_FILE_ERROR:
+        # Use the stored error message (which is already translated)
         return html.P(DATA_FILE_ERROR, style={'color': 'red', 'textAlign': 'center', 'fontSize': '18px'})
 
     if not search_value:
-        return html.P("Please enter a search term to see matching tasks.", style={'textAlign': 'center', 'fontSize': '18px'})
+        return html.P(t['search_prompt'], style={'textAlign': 'center', 'fontSize': '18px'})
 
     try:
-        # Create a flexible filter mask.
         search_query = search_value.lower()
         mask = df_all_tasks[SEARCH_COLS].apply(
             lambda col: col.str.lower().str.contains(search_query, na=False)
@@ -115,16 +218,20 @@ def update_results(search_value):
         filtered_df = df_all_tasks[mask]
 
         if filtered_df.empty:
-            return html.P(f"No results found for '{search_value}'.", style={'textAlign': 'center', 'color': 'red', 'fontSize': '18px'})
+            # Handle different word order for "no results"
+            if lang == 'en':
+                no_results_text = f"{t['no_results']} '{search_value}'"
+            else:
+                no_results_text = f"'{search_value}' {t['no_results']}"
+            return html.P(no_results_text, style={'textAlign': 'center', 'color': 'red', 'fontSize': '18px'})
 
-        # Display the results in an interactive data table
         return dash_table.DataTable(
             data=filtered_df[DISPLAY_COLS].to_dict('records'),
             columns=[{"name": i, "id": i} for i in DISPLAY_COLS],
-            page_size=20,  # Show 20 tasks per page
-            sort_action="native",  # Allow sorting by clicking headers
-            filter_action="native", # Allow column-level filtering
-            style_table={'overflowX': 'auto'}, # Allow horizontal scrolling
+            page_size=20,
+            sort_action="native",
+            filter_action="native",
+            style_table={'overflowX': 'auto'},
             style_cell={
                 'textAlign': 'left',
                 'padding': '10px',
@@ -138,17 +245,15 @@ def update_results(search_value):
                 'border': '1px solid #ddd'
             },
             style_data_conditional=[
-                {
-                    'if': {'row_index': 'odd'},
-                    'backgroundColor': '#fcfcfc'
-                }
+                {'if': {'row_index': 'odd'}, 'backgroundColor': '#fcfcfc'}
             ]
         )
 
     except Exception as e:
-        return html.P(f"An error occurred during search: {e}", style={'color': 'red'})
+        return html.P(f"{t['search_error']} {e}", style={'color': 'red'})
 
-# --- 5. Run the App ---
+
+# --- 6. Run the App ---
 if __name__ == '__main__':
-    # FIXED: Changed from run_server to run
+    # Use app.run, not app.run_server
     app.run(debug=False, host='0.0.0.0')
