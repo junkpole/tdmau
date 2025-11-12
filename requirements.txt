@@ -1,2 +1,4 @@
 pandas
 dash
+gunicorn
+openpyxl
