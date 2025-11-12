@@ -4,7 +4,7 @@ from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output
 
 # --- 1. Load the Master Task Data ---
-TASK_FILE = "tasks.csv"
+TASK_FILE = "tasks.xlsx"
 DATA_FILE_ERROR = None
 
 try:
