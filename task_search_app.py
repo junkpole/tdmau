@@ -150,4 +150,5 @@ def update_results(search_value):
 
 # --- 5. Run the App ---
 if __name__ == '__main__':
-    app.run_server(debug=False, host='0.0.0.0')
+    # FIXED: Changed from run_server to run
+    app.run(debug=False, host='0.0.0.0')
