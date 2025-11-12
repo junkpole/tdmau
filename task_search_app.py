@@ -49,41 +49,17 @@ TASK_FILE = "tasks.xlsx"
 DATA_FILE_ERROR = None
 
 try:
-    # Use pd.read_excel to read .xlsx files
-    # We specify header=1 (the second row) and the 'openpyxl' engine
     df_all_tasks = pd.read_excel(TASK_FILE, header=1, engine='openpyxl')
-
-    # Drop any rows that are completely empty
     df_all_tasks = df_all_tasks.dropna(how='all')
-
-    # Define the columns you want to be able to search
-    SEARCH_COLS = [
-        'Топшириқ мазмуни',
-        'Асосий ижрочи маъсуллар',
-        'Ижро ҳолати',
-        'Топшириқ берилган жой'
-    ]
-    # Ensure all search columns are present and are string type
+    SEARCH_COLS = ['Топшириқ мазмуни', 'Асосий ижрочи маъсуллар', 'Ижро ҳолати', 'Топшириқ берилган жой']
     for col in SEARCH_COLS:
         if col in df_all_tasks.columns:
             df_all_tasks[col] = df_all_tasks[col].astype(str).fillna('')
         else:
             print(f"Warning: Search column '{col}' not found in file.")
-
-    # Columns to display in the search results table
-    DISPLAY_COLS = [
-        'Банд',
-        'Топшириқ мазмуни',
-        'Ижро муддати',
-        'Асосий ижрочи маъсуллар',
-        'Ижро ҳолати',
-        'Изох'
-    ]
-    # Filter to only columns that actually exist in the loaded dataframe
+    DISPLAY_COLS = ['Банд', 'Топшириқ мазмуни', 'Ижро муддати', 'Асосий ижрочи маъсуллар', 'Ижро ҳолати', 'Изох']
     DISPLAY_COLS = [col for col in DISPLAY_COLS if col in df_all_tasks.columns]
-
     print("Successfully loaded task data.")
-
 except FileNotFoundError:
     print(f"FATAL ERROR: Could not find the data file '{TASK_FILE}'.")
     DATA_FILE_ERROR = f"{translations['uz']['data_error_file']} ({TASK_FILE})"
@@ -97,9 +73,21 @@ except Exception as e:
 # --- 3. Initialize the Dash App ---
 app = dash.Dash(__name__)
 server = app.server
-app.title = translations['uz']['app_title'] # Default title
+app.title = translations['uz']['app_title'] # Default title - This sets the browser tab
 
-# --- 4. Define the App Layout ---
+# --- 4. Define the App Layout (PRE-POPULATED with default language) ---
+
+# Create default footer children (Uzbek)
+default_footer = [
+    html.Span(translations['uz']['footer_text']),
+    html.A(
+        translations['uz']['footer_link'],
+        href="https://www.instagram.com/iamumarsatti/?hl=en",
+        target="_blank",
+        style={'color': '#007bff', 'textDecoration': 'none', 'fontWeight': 'bold'}
+    )
+]
+
 app.layout = html.Div(
     style={'fontFamily': 'Arial, sans-serif', 'padding': '20px', 'minHeight': '100vh', 'display': 'flex', 'flexDirection': 'column'},
     children=[
@@ -128,12 +116,19 @@ app.layout = html.Div(
         html.Div(
             style={'flex': '1'},
             children=[
-                html.H1(id='main-title', style={'textAlign': 'center', 'color': '#333'}),
+                # PRE-POPULATED with default 'uz' text
+                html.H1(
+                    id='main-title',
+                    children=translations['uz']['main_title'], # <-- FIX: Set default title
+                    style={'textAlign': 'center', 'color': '#333'}
+                ),
                 html.Div(
                     [
                         dcc.Input(
                             id='search-input',
                             type='text',
+                            # PRE-POPULATED with default 'uz' text
+                            placeholder=translations['uz']['placeholder'], # <-- FIX: Set default placeholder
                             disabled=DATA_FILE_ERROR is not None,
                             style={'width': '100%', 'padding': '12px', 'fontSize': '16px', 'borderRadius': '5px', 'border': '1px solid #ccc'}
                         )
@@ -151,8 +146,12 @@ app.layout = html.Div(
             ]
         ),
         
-        # Footer
-        html.Footer(id='footer', style={'textAlign': 'center', 'marginTop': '40px', 'padding': '20px', 'color': '#777', 'borderTop': '1px solid #eee'})
+        # PRE-POPULATED with default 'uz' text
+        html.Footer(
+            id='footer',
+            children=default_footer, # <-- FIX: Set default footer
+            style={'textAlign': 'center', 'marginTop': '40px', 'padding': '20px', 'color': '#777', 'borderTop': '1px solid #eee'}
+        )
     ]
 )
 
@@ -167,16 +166,17 @@ app.layout = html.Div(
 def update_language(lang):
     return lang
 
-# Callback to update all UI text based on language
+# Callback to update all UI text based on language (FIXED)
 @app.callback(
     [Output('main-title', 'children'),
      Output('search-input', 'placeholder'),
-     Output('footer', 'children'),
-     Output('app-title', 'title')], # Update browser tab title
+     Output('footer', 'children')],
     Input('language-store', 'data')
 )
 def update_ui_text(lang):
-    t = translations[lang]
+    # Ensure lang is valid, default to 'uz' if not
+    t = translations.get(lang, translations['uz'])
+    
     footer_children = [
         html.Span(t['footer_text']),
         html.A(
@@ -186,12 +186,8 @@ def update_ui_text(lang):
             style={'color': '#007bff', 'textDecoration': 'none', 'fontWeight': 'bold'}
         )
     ]
-    # Note: Dash does not officially support changing app.title dynamically after load.
-    # This (Output('app-title', 'title')) is a small hack and may not always work,
-    # but the 'main-title' and other elements will update perfectly.
-    # We will update the 'app.title' as well, which sets the <title> tag.
-    app.title = t['app_title'] 
-    return t['main_title'], t['placeholder'], footer_children, t['app_title']
+    # Removed the 'app-title' output which was causing the callback to fail
+    return t['main_title'], t['placeholder'], footer_children
 
 # Callback for search logic
 @app.callback(
@@ -200,7 +196,8 @@ def update_ui_text(lang):
     State('language-store', 'data') # Use State so it doesn't re-trigger
 )
 def update_results(search_value, lang):
-    t = translations[lang]
+    # Ensure lang is valid, default to 'uz' if not
+    t = translations.get(lang, translations['uz'])
 
     if DATA_FILE_ERROR:
         # Use the stored error message (which is already translated)
