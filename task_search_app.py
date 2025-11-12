@@ -51,7 +51,6 @@ except FileNotFoundError:
 
 except Exception as e:
     print(f"An error occurred loading the data: {e}")
-    # This will catch any other errors, like if openpyxl is not installed
     DATA_FILE_ERROR = f"An error occurred loading data: {e}"
     df_all_tasks = pd.DataFrame()
 
@@ -62,7 +61,8 @@ server = app.server # This line is needed for services like Render
 app.title = "Task Search System"
 
 # --- 3. Define the App Layout ---
-app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'padding': '20px'})(
+app.layout = html.Div(
+    style={'fontFamily': 'Arial, sans-serif', 'padding': '20px'},
     children=[
         html.H1("Task Management Search System", style={'textAlign': 'center', 'color': '#333'}),
 
@@ -107,7 +107,6 @@ def update_results(search_value):
 
     try:
         # Create a flexible filter mask.
-        # This checks all SEARCH_COLS for the search_value.
         search_query = search_value.lower()
         mask = df_all_tasks[SEARCH_COLS].apply(
             lambda col: col.str.lower().str.contains(search_query, na=False)
@@ -151,5 +150,4 @@ def update_results(search_value):
 
 # --- 5. Run the App ---
 if __name__ == '__main__':
-    # 'host' is set to '0.0.0.0' to be accessible for deployment
     app.run_server(debug=False, host='0.0.0.0')
