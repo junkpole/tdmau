@@ -4,13 +4,18 @@ from dash import dcc, html, dash_table
 from dash.dependencies import Input, Output
 
 # --- 1. Load the Master Task Data ---
-# This file MUST be in the same directory as the script.
-TASK_FILE = "tasks.xlsx"
+TASK_FILE = "tasks.csv"
 DATA_FILE_ERROR = None
 
 try:
-    # We specify the header is on the 2nd row (index 1)
-    df_all_tasks = pd.read_csv(TASK_FILE, header=1)
+    # Try loading with standard UTF-8 first
+    try:
+        df_all_tasks = pd.read_csv(TASK_FILE, header=1, encoding='utf-8')
+    except UnicodeDecodeError:
+        print("UTF-8 encoding failed, trying cp1251 (Windows-Cyrillic)...")
+        # If that fails, try 'cp1251' which is standard for Cyrillic Excel files
+        df_all_tasks = pd.read_csv(TASK_FILE, header=1, encoding='cp1251')
+
     # Drop any rows that are completely empty
     df_all_tasks = df_all_tasks.dropna(how='all')
     
@@ -41,6 +46,16 @@ try:
     DISPLAY_COLS = [col for col in DISPLAY_COLS if col in df_all_tasks.columns]
     
     print("Successfully loaded task data.")
+    
+except FileNotFoundError:
+    print(f"FATAL ERROR: Could not find the data file '{TASK_FILE}'.")
+    DATA_FILE_ERROR = f"Error: The data file ({TASK_FILE}) was not found. The app cannot load."
+    df_all_tasks = pd.DataFrame()
+    
+except Exception as e:
+    print(f"An error occurred loading the data: {e}")
+    DATA_FILE_ERROR = f"An error occurred loading data: {e}"
+    df_all_tasks = pd.DataFrame()
     
 except FileNotFoundError:
     print(f"FATAL ERROR: Could not find the data file '{TASK_FILE}'.")
